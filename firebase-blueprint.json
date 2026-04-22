@@ -1,0 +1,78 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Represents an authenticated user (Parent or Admin) in the system.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "parent"] },
+        "createdAt": { "type": "number", "description": "Firestore timestamp" },
+        "updatedAt": { "type": "number", "description": "Firestore timestamp" }
+      },
+      "required": ["email", "name", "role", "createdAt", "updatedAt"]
+    },
+    "Child": {
+      "title": "Child",
+      "description": "Represents a child profile managed by a parent.",
+      "type": "object",
+      "properties": {
+        "parentId": { "type": "string" },
+        "name": { "type": "string" },
+        "age": { "type": "number" },
+        "avatarUrl": { "type": "string" },
+        "createdAt": { "type": "number", "description": "Firestore timestamp" },
+        "updatedAt": { "type": "number", "description": "Firestore timestamp" }
+      },
+      "required": ["parentId", "name", "age", "createdAt", "updatedAt"]
+    },
+    "Story": {
+      "title": "Story",
+      "description": "Represents a story book in the system.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "category": { "type": "string" },
+        "audioUrl": { "type": "string" },
+        "coverImage": { "type": "string" },
+        "authorId": { "type": "string", "description": "If a parent created it, or admin" },
+        "createdAt": { "type": "number", "description": "Firestore timestamp" },
+        "updatedAt": { "type": "number", "description": "Firestore timestamp" }
+      },
+      "required": ["title", "content", "category", "createdAt", "updatedAt"]
+    },
+    "ReadingLog": {
+      "title": "ReadingLog",
+      "description": "Represents a child's reading session for analytics.",
+      "type": "object",
+      "properties": {
+        "childId": { "type": "string" },
+        "storyId": { "type": "string" },
+        "durationSeconds": { "type": "number" },
+        "completed": { "type": "boolean" },
+        "createdAt": { "type": "number", "description": "Firestore timestamp" }
+      },
+      "required": ["childId", "storyId", "durationSeconds", "completed", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Stores user profiles and role configuration."
+    },
+    "/children/{childId}": {
+      "schema": { "$ref": "#/entities/Child" },
+      "description": "Stores children profiles."
+    },
+    "/stories/{storyId}": {
+      "schema": { "$ref": "#/entities/Story" },
+      "description": "Stores the library of stories."
+    },
+    "/readingLogs/{logId}": {
+      "schema": { "$ref": "#/entities/ReadingLog" },
+      "description": "Stores reading logs for analytics."
+    }
+  }
+}

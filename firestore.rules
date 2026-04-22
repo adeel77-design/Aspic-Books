@@ -1,0 +1,58 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Basic rules
+    match /{document=**} {
+      allow read, write: if false;
+    }
+    
+    function isSignedIn() { return request.auth != null; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isAdmin() { 
+      return isSignedIn() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      // For a real app, strict creation might be through server but we'll allow creation matching Auth UID
+      allow create: if isSignedIn() && request.auth.uid == userId && (incoming().role == 'parent' || isAdmin()) && incoming().keys().hasAll(['email', 'name', 'role', 'createdAt', 'updatedAt']) && incoming().keys().size() == 5;
+      allow update: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+    }
+
+    match /children/{childId} {
+      allow read: if isSignedIn() && (existing().parentId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.parentId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && (incoming().parentId == request.auth.uid || isAdmin()) && incoming().keys().hasAll(['parentId', 'name', 'age', 'createdAt', 'updatedAt']);
+      allow update: if isSignedIn() && (existing().parentId == request.auth.uid || isAdmin());
+      allow delete: if isSignedIn() && (existing().parentId == request.auth.uid || isAdmin());
+    }
+
+    match /stories/{storyId} {
+      // Any signed in user can read stories (parents or children view)
+      allow read: if isSignedIn();
+      allow list: if isSignedIn();
+      // Only admins or authors can modify
+      allow create: if isSignedIn() && (isAdmin() || incoming().authorId == request.auth.uid);
+      allow update: if isSignedIn() && (isAdmin() || existing().authorId == request.auth.uid);
+      allow delete: if isSignedIn() && (isAdmin() || existing().authorId == request.auth.uid);
+    }
+
+    match /readingLogs/{logId} {
+      // Child logs. Parents can read their children's logs.
+      allow read: if isSignedIn() && (
+        isAdmin() || 
+        get(/databases/$(database)/documents/children/$(resource.data.childId)).data.parentId == request.auth.uid
+      );
+      allow list: if isSignedIn() && (
+        isAdmin() || 
+        get(/databases/$(database)/documents/children/$(resource.data.childId)).data.parentId == request.auth.uid
+      );
+      // Anyone signed in (e.g. child viewing the screen) can create a log.
+      allow create: if isSignedIn();
+    }
+  }
+}
